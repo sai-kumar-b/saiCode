@@ -1,67 +1,59 @@
 string input = model.Display;
-                List<string> ArrList = new List<string>();
-                List<string> ArrList2 = new List<string>();
-                foreach (Match match in Regex.Matches(input, @"\d+|[^\d]"))
-                {
-                    ArrList.Add(match.Value);
-                }
-                foreach (Match match in Regex.Matches(input, @"-?\d+|[^\d]"))
-                {
-                    ArrList2.Add(match.Value);
-                }
-                List<string> ArrList3 = new List<string>();
-                    foreach (Match match in Regex.Matches(input, @"\d+(\.\d+)?|[-+*/=]"))
-                    {
-                        ArrList3.Add(match.Value);
-                    }
-                int mm = ArrList2.Count;
-                if (ArrList2[mm - 1] == "." && Operation=="." && ArrList2[mm - 2] == ".")
-                {
-                    ArrList2.RemoveAt(mm - 1);
-                    model.Display = "";
-                    foreach (string nn in ArrList2)
-                        model.Display += nn;
-                    return View("Index", model);
-                }
-                if (ArrList2[mm-1]=="." &&( ArrList2[mm-2]=="+" || ArrList2[mm - 2] == "-" || ArrList2[mm - 2] == "*" || ArrList2[mm - 2] == "/" ))
-                {
-                    ArrList2.Insert(mm - 1, "0");
-                    model.Display = "";
-                    foreach (string nn in ArrList2)
-                        model.Display += nn;
-                    return View("Index", model);
-                }
-                if (Operation == "=" && ArrList2[mm - 1] == "=" && ArrList2[0]=="0" && 0 < Convert.ToInt32(ArrList2[mm - 2]) && ( ArrList2[1] == "/"  || ArrList2[1] == "*"))
-                {
-                    return View("Index", model);
-                }
-                    if (mm==1 && Operation=="=" && (ArrList2[mm -1]=="=" || 0<Convert.ToInt32(ArrList2[0])))
-                {
-                    model.Display = "";
-                    model.Display += ArrList2[0].ToString();
-                    model.Display += "=";
-                    return View("Index", model);
-                }
-                if (mm == 2 && Operation == "=" && ArrList2[mm - 1] == "=" )
-                {
-                    model.Display = "";
-                    model.Display += ArrList2[0].ToString();
-                    model.Display += "=";
-                    model.Result = Convert.ToDouble(ArrList2[0]);
-                    return View("Index", model);
-                }
-                int c = list.Length;
-               
-                if (c > 2)
-                {
-                     if(list[c-2]=='=' && list[c - 1] == '.')
-                     {
-                        model.Display = "0.";
-                        model.Result = 0;
-                        TempData["Temp"] = null;
-                        return View("Index", model);
-                     }
-                    int arrlen3 = ArrList3.Count;//point checking
+List<string> ArrList = new List<string>();
+List<string> ArrList2 = new List<string>();
+List<string> ArrList3 = new List<string>();
+
+// Use regex to split the input into numbers and operators
+foreach (Match match in Regex.Matches(input, @"\d+(\.\d+)?|[-+*/=]"))
+{
+    ArrList3.Add(match.Value);
+    if (match.Value == "=") ArrList2.Add(match.Value); // Special handling for '='
+    else if (Regex.IsMatch(match.Value, @"-?\d+")) ArrList2.Add(match.Value);
+    else ArrList.Add(match.Value);
+}
+
+int mm = ArrList2.Count;
+bool hasDot = ArrList2.Contains(".");
+
+if (Operation == ".")
+{
+    if (mm > 1 && ArrList2[mm - 1] == "." && ArrList2[mm - 2] == ".")
+    {
+        ArrList2.RemoveAt(mm - 1);
+    }
+    else if (mm > 1 && ArrList2[mm - 1] == "." &&
+        (ArrList2[mm - 2] == "+" || ArrList2[mm - 2] == "-" || ArrList2[mm - 2] == "*" || ArrList2[mm - 2] == "/"))
+    {
+        ArrList2.Insert(mm - 1, "0");
+    }
+}
+
+if (Operation == "=")
+{
+    if (mm == 1 && (ArrList2[mm - 1] == "=" || Convert.ToInt32(ArrList2[0]) > 0))
+    {
+        model.Display = $"{ArrList2[0]}=";
+    }
+    else if (mm == 2 && ArrList2[mm - 1] == "=")
+    {
+        model.Display = $"{ArrList2[0]}=";
+        model.Result = Convert.ToDouble(ArrList2[0]);
+    }
+    else if (mm > 2 && ArrList2[mm - 1] == "=")
+    {
+        model.Display = $"{ArrList2[0]}{ArrList2[1]}";
+        model.Result = Convert.ToDouble(ArrList2[0]);
+    }
+}
+
+if (Operation == "." && hasDot)
+{
+    model.Display = string.Join("", ArrList3);
+}
+
+model.Display = string.Join("", ArrList2);
+return View("Index", model);
+
                     if(Operation=="." && ArrList3[arrlen3-1].Contains("."))
                         {
                         model.Display = "";
