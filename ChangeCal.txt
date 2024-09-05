@@ -1,0 +1,385 @@
+using System;
+using System.Collections.Generic;
+using System.Collections;
+using System.Text.RegularExpressions;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using WebApplication2.Models;
+namespace WebApplication2.Controllers
+{
+    public class CalculatorController : Controller
+    {
+        Calculator obj = new Calculator();
+        public void GetResult(char oppp,Calculator model,string OutNum)
+        {
+            double number = Convert.ToDouble(OutNum);
+            switch (oppp)
+            {
+                case '+':model.Result += number; break;
+                case '-':model.Result -= number; break;
+                case '*':model.Result *= number; break;
+                case '/':model.Result /= number; break;
+            }
+        }
+        public ActionResult ZeroError(Calculator model)
+        {
+            ViewBag.ErrorMsg = "Cannot Divide by Zero...!";
+            model.Display = "";
+            model.Result = 0;
+            TempData["Temp"] = null;
+            return View("Index", model);
+        }
+        public ActionResult Index()
+        {
+            return View(obj);
+        }
+        [HttpPost]
+        public ActionResult Index(Calculator model,string Operation,string number)
+        {
+            if(Operation=="C")
+            {
+                model.Display = "";
+                model.Result = 0;
+                ViewBag.ErrorMsg="";
+                TempData["Temp"] = null;
+                return View("Index",model);
+            }
+            if (Operation != "+" && Operation != "-" && Operation != "*" && Operation != "/" && Operation == null && Operation!=".")
+            {
+                model.Display += number;
+            }
+            if (Operation == "+" || Operation == "-" || Operation == "*" || Operation == "/" || Operation==".")
+            {
+                TempData["Temp"] = Operation;
+                model.Display += Operation;
+            }
+            if(Operation=="=")
+            {
+                string fault = model.Display;
+                model.Display += Operation;
+                char[] list2 = model.Display.ToCharArray();
+                if (list2[0] == '=')
+                {
+                    model.Display = "";
+                    return View("Index", model);
+                }
+                model.Display += "";
+                model.Display = fault;
+            }
+            if (Operation == "=" || Operation == "+" || Operation == "-" || Operation == "*" || Operation == "/" || Operation==".")
+            {
+                char[] list = model.Display.ToCharArray();
+                bool check = list[0] == '-' || list[0] == '+' || list[0] == '*' || list[0] == '/' || list[0]=='.' ;
+                if ( check && list.Length==1)
+                {
+                    model.Display = "";
+                    model.Display += model.Result;
+                    model.Display += Operation;
+                    return View("Index", model);
+                }
+                string input = model.Display;
+                List<string> ArrList = new List<string>();
+                List<string> ArrList2 = new List<string>();
+                foreach (Match match in Regex.Matches(input, @"\d+|[^\d]"))
+                {
+                    ArrList.Add(match.Value);
+                }
+                foreach (Match match in Regex.Matches(input, @"-?\d+|[^\d]"))
+                {
+                    ArrList2.Add(match.Value);
+                }
+                List<string> ArrList3 = new List<string>();
+                    foreach (Match match in Regex.Matches(input, @"\d+(\.\d+)?|[-+*/=]"))
+                    {
+                        ArrList3.Add(match.Value);
+                    }
+                int mm = ArrList2.Count;
+                if (ArrList2[mm - 1] == "." && Operation=="." && ArrList2[mm - 2] == ".")
+                {
+                    ArrList2.RemoveAt(mm - 1);
+                    model.Display = "";
+                    foreach (string nn in ArrList2)
+                        model.Display += nn;
+                    return View("Index", model);
+                }
+                if (ArrList2[mm-1]=="." &&( ArrList2[mm-2]=="+" || ArrList2[mm - 2] == "-" || ArrList2[mm - 2] == "*" || ArrList2[mm - 2] == "/" ))
+                {
+                    ArrList2.Insert(mm - 1, "0");
+                    model.Display = "";
+                    foreach (string nn in ArrList2)
+                        model.Display += nn;
+                    return View("Index", model);
+                }
+                if (Operation == "=" && ArrList2[mm - 1] == "=" && ArrList2[0]=="0" && 0 < Convert.ToInt32(ArrList2[mm - 2]) && ( ArrList2[1] == "/"  || ArrList2[1] == "*"))
+                {
+                    return View("Index", model);
+                }
+                    if (mm==1 && Operation=="=" && (ArrList2[mm -1]=="=" || 0<Convert.ToInt32(ArrList2[0])))
+                {
+                    model.Display = "";
+                    model.Display += ArrList2[0].ToString();
+                    model.Display += "=";
+                    return View("Index", model);
+                }
+                if (mm == 2 && Operation == "=" && ArrList2[mm - 1] == "=" )
+                {
+                    model.Display = "";
+                    model.Display += ArrList2[0].ToString();
+                    model.Display += "=";
+                    model.Result = Convert.ToDouble(ArrList2[0]);
+                    return View("Index", model);
+                }
+                int c = list.Length;
+               
+                if (c > 2)
+                {
+                     if(list[c-2]=='=' && list[c - 1] == '.')
+                     {
+                        model.Display = "0.";
+                        model.Result = 0;
+                        TempData["Temp"] = null;
+                        return View("Index", model);
+                     }
+                    int arrlen3 = ArrList3.Count;//point checking
+                    if(Operation=="." && ArrList3[arrlen3-1].Contains("."))
+                        {
+                        model.Display = "";
+                        foreach(string e in ArrList3)
+                        {
+                            model.Display += e;
+                            return View("Index", model);
+                        }
+                    }
+                }
+                List<char> array = new List<char>(list);
+                int len = array.Count;
+                int equal = ArrList2.Count;
+                if(ArrList2[equal-1]=="=" && ArrList2[equal - 2] == "=")
+                {
+                    model.Display = "";
+                    ArrList2.RemoveAt(equal-1);
+                    foreach(string S in ArrList2)
+                    model.Display += S;
+                    return View("Index",model);
+                }
+
+                if((ArrList2[mm - 1] == "+" || ArrList2[mm - 1] == "-" || ArrList2[mm - 1] == "*" || ArrList2[mm - 1] == "/") && ArrList2[mm-2]=="=")
+                {
+                    model.Display = model.Result.ToString();
+                    model.Display += Operation;
+                    return View("Index", model);
+                }
+                if(check && ArrList2.Count==4)
+                {
+                    string SecondNum = ArrList2[2];
+                    char ope = Convert.ToChar(ArrList2[1]);
+
+                    if (Convert.ToDouble(SecondNum) == 0)
+                    {
+                        ZeroError(model);
+                    }
+                    else
+                    {
+                        GetResult(ope, model, SecondNum);
+                    }
+                    model.Display = "";
+                    model.Display += Convert.ToString(model.Result);
+                    model.Display += ArrList2[1].ToString();  ////////new added
+                    model.Display += SecondNum;
+                    model.Display += ArrList2[ArrList2.Count - 1];
+                    return View("Index", model);
+                }
+                string outNum;
+                int CC = ArrList.Count;
+                if (array[0] == '-') outNum = ArrList[CC-2];
+                else
+                outNum = array[len - 2].ToString();
+                if (Operation=="="&& array[len - 1]=='=')
+                { 
+                    model.Display = "";
+                    int find = ArrList2.Count;
+                model.Display = Convert.ToString(model.Result);
+                    if(0< model.Result  && ArrList[1]=="-")
+                    {
+                        model.Display += ArrList2[1];
+                        model.Display += Operation;
+                    }
+                    else
+                    {
+                        model.Display += ArrList2[find - 2];
+                        model.Display += ArrList2[find - 1];
+                    }
+                    int dd = ArrList.Count;
+                    outNum = ArrList[dd - 2];
+                    char oppp = Convert.ToChar(ArrList[dd - 3]);
+                    int len3=ArrList3.Count;
+                    bool contain = model.Result.ToString().Contains(".");
+                    bool pointCheck = false;
+                    bool secondCheck = false;
+                    if (ArrList3.Count > 2)
+                    {
+                        pointCheck = ArrList3[2].ToString().Contains(".");
+                        secondCheck = ArrList3[len3 - 2].ToString().Contains(".");
+                        if( 0 <= model.Result)
+                        {
+                            model.Display = "";
+                            model.Display += model.Result;
+                            model.Display += ArrList3[1].ToString();
+                            model.Display += ArrList3[2].ToString();
+                            model.Display += Operation;
+                            outNum = ArrList3[len3 - 2];
+                            oppp = Convert.ToChar(ArrList3[1]);
+                        }
+                        else if (contain && Operation == "=" && pointCheck)
+                        {
+                            model.Display = "";
+                            model.Display += model.Result;
+                            model.Display += ArrList3[1].ToString();
+                            model.Display += ArrList3[2].ToString();
+                            model.Display += Operation;
+                            outNum = ArrList3[2];
+                            oppp = Convert.ToChar(ArrList3[1]);
+                        }
+                        else if (contain && Operation == "=" && ArrList3[0] == "-")
+                        {
+                            model.Display = "";
+                            model.Display += model.Result;
+                            model.Display += ArrList3[2].ToString();
+                            model.Display += ArrList3[3].ToString();
+                            model.Display += Operation;
+                            outNum = ArrList3[len3 - 2];
+                            oppp = Convert.ToChar(ArrList3[2]);
+                        }
+                        else  if(0<model.Result && secondCheck && contain==false)
+                        {
+                            model.Display = "";
+                            model.Display += model.Result;
+                            model.Display += ArrList3[2].ToString();
+                            model.Display += ArrList3[3].ToString();
+                            model.Display += Operation;
+                            outNum = ArrList3[len3 - 2];
+                            oppp = Convert.ToChar(ArrList3[2]);
+                        }
+                        else if (contain==false && Operation == "=" && ArrList3[0] == "-")
+                        {
+                            model.Display = "";
+                            model.Display += model.Result;
+                            model.Display += ArrList3[2].ToString();
+                            model.Display += ArrList3[3].ToString();
+                            model.Display += Operation;
+                            outNum = ArrList3[len3 - 2];
+                            oppp = Convert.ToChar(ArrList3[2]);
+                        }
+                    }
+                    if (Convert.ToDouble(outNum) == 0)
+                    {
+                        ZeroError(model);
+                    }
+                    else
+                    {
+                        GetResult(oppp, model, outNum);
+                    }
+              
+                    array.Clear();
+                    return View("Index", model);
+                }
+                if(array[len-1]=='+'|| array[len - 1] == '-' || array[len - 1] == '*' || array[len - 1] == '/'|| array[len - 1] == '=' )
+                {
+                    if (array[len - 2] == '+' || array[len - 2] == '-' || array[len - 2] == '*' || array[len - 2] == '/' || array[len - 2] == '=')
+                    {
+                        array.RemoveAt(len - 2);
+                        int lastChar = array.Count - 1;
+                        model.Display = Convert.ToString(model.Result);
+                        char last = array[lastChar];
+                        model.Display += last;
+                        return View("Index", model);
+                    }
+                }
+                List<char> OperatorList = new List<char>();//separate array for operands(+,-...)
+                char[] Operators = { '+', '-', '*', '/' };//split by symbols(Operands)
+                string[] numbers = model.Display.Split(Operators);//separate array for operators(numbers)
+                if (numbers.Length > 1)
+                {
+                    for (int i = 0; i < array.Count; i++)
+                    {
+                        if (array[i] == '+' || array[i] == '-' || array[i] == '*' || array[i] == '/')
+                        {
+                            OperatorList.Add(array[i]);//adding operands to array 
+                        }
+                    }
+                    if (numbers[0] == "")
+                    {
+                        if(ArrList2[1]==".")
+                        {
+                            model.Result = Convert.ToDouble(numbers[1]);
+                        }
+                        else
+                        model.Result = double.Parse(ArrList2[0]);
+                    }
+                    else
+                        model.Result = Convert.ToDouble(numbers[0]);
+                    if (Operation == "=")
+                    {
+                        if (array[len - 1] == '+' || array[len - 1] == '-' || array[len - 1] == '*' || array[len - 1] == '/')
+                        {
+                            string temp2 = model.Result.ToString();
+                            if (Convert.ToDouble(temp2) == 0)
+                            {
+                                ZeroError(model);
+                            }
+                            else
+                            {
+                                GetResult(array[len - 1], model, temp2);
+                            }
+
+                            int lastChar = array.Count - 1;
+                            model.Display += temp2;
+                            model.Display += "=";
+                        }
+                        else
+                        {
+                                int aa = OperatorList.Count;
+                                int bb = numbers.Length;
+                                double num = Convert.ToDouble(numbers[bb-1]);
+                                int j = aa - 1;
+                            if (num == 0)
+                            {
+                                ZeroError(model);
+                            }
+                            else
+                            {
+                                GetResult(OperatorList[j], model, numbers[bb - 1]);
+                            }
+                            model.Display += Operation;
+                        }
+                    }
+                    else
+                    {
+                        if (numbers.Length > 2)
+                        {
+                                int kk = numbers.Length;
+                                double num = Convert.ToDouble(numbers[kk-2]);
+                            int j = 0;
+                            if (num == 0)
+                            {
+                                ZeroError(model);
+                            }
+                            else
+                            {
+                                GetResult(OperatorList[j], model, numbers[kk - 2]);
+                            }
+
+                            int lastChar = array.Count - 1;
+                            model.Display = Convert.ToString(model.Result);
+                            char last = array[lastChar];
+                            model.Display += last;
+                        }
+                    }
+
+                }
+            }
+            return View("Index", model);
+        }
+    }
+}
