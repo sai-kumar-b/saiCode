@@ -1,66 +1,148 @@
-string input = model.Display;
-List<string> ArrList = new List<string>();
-List<string> ArrList2 = new List<string>();
-List<string> ArrList3 = new List<string>();
+using System;
+using System.Collections.Generic;
+using System.Web.Mvc;
+using WebApplication2.Models;
 
-// Use regex to split the input into numbers and operators
-foreach (Match match in Regex.Matches(input, @"\d+(\.\d+)?|[-+*/=]"))
+namespace WebApplication2.Controllers
 {
-    ArrList3.Add(match.Value);
-    if (match.Value == "=") ArrList2.Add(match.Value); // Special handling for '='
-    else if (Regex.IsMatch(match.Value, @"-?\d+")) ArrList2.Add(match.Value);
-    else ArrList.Add(match.Value);
-}
-
-int mm = ArrList2.Count;
-bool hasDot = ArrList2.Contains(".");
-
-if (Operation == ".")
-{
-    if (mm > 1 && ArrList2[mm - 1] == "." && ArrList2[mm - 2] == ".")
+    public class CalculatorController : Controller
     {
-        ArrList2.RemoveAt(mm - 1);
-    }
-    else if (mm > 1 && ArrList2[mm - 1] == "." &&
-        (ArrList2[mm - 2] == "+" || ArrList2[mm - 2] == "-" || ArrList2[mm - 2] == "*" || ArrList2[mm - 2] == "/"))
-    {
-        ArrList2.Insert(mm - 1, "0");
-    }
-}
+        private Calculator obj = new Calculator();
 
-if (Operation == "=")
-{
-    if (mm == 1 && (ArrList2[mm - 1] == "=" || Convert.ToInt32(ArrList2[0]) > 0))
-    {
-        model.Display = $"{ArrList2[0]}=";
-    }
-    else if (mm == 2 && ArrList2[mm - 1] == "=")
-    {
-        model.Display = $"{ArrList2[0]}=";
-        model.Result = Convert.ToDouble(ArrList2[0]);
-    }
-    else if (mm > 2 && ArrList2[mm - 1] == "=")
-    {
-        model.Display = $"{ArrList2[0]}{ArrList2[1]}";
-        model.Result = Convert.ToDouble(ArrList2[0]);
-    }
-}
-
-if (Operation == "." && hasDot)
-{
-    model.Display = string.Join("", ArrList3);
-}
-
-model.Display = string.Join("", ArrList2);
-return View("Index", model);
-
-                    if(Operation=="." && ArrList3[arrlen3-1].Contains("."))
-                        {
-                        model.Display = "";
-                        foreach(string e in ArrList3)
-                        {
-                            model.Display += e;
-                            return View("Index", model);
-                        }
+        private void GetResult(char opp, Calculator model, double number)
+        {
+            switch (opp)
+            {
+                case '+': model.Result += number; break;
+                case '-': model.Result -= number; break;
+                case '*': model.Result *= number; break;
+                case '/':
+                    if (number == 0)
+                    {
+                        ZeroError(model);
+                        return;
                     }
+                    model.Result /= number;
+                    break;
+            }
+        }
+
+        private void ZeroError(Calculator model)
+        {
+            ViewBag.ErrorMsg = "Cannot Divide by Zero...!";
+            model.Display = "";
+            model.Result = 0;
+            TempData["Temp"] = null;
+        }
+
+        public ActionResult Index()
+        {
+            return View(obj);
+        }
+
+        [HttpPost]
+        public ActionResult Index(Calculator model, string Operation, string number)
+        {
+            if (Operation == "C")
+            {
+                obj.Display = "";
+                obj.Result = 0;
+                ViewBag.ErrorMsg = "";
+                TempData["Temp"] = null;
+                return View("Index", obj);
+            }
+
+            if (string.IsNullOrEmpty(Operation) || !"+-*/.".Contains(Operation))
+            {
+                model.Display += number;
+            }
+            else if (Operation == "=")
+            {
+                ProcessCalculation(model);
+            }
+            else
+            {
+                ProcessOperation(model, Operation);
+            }
+
+            return View("Index", model);
+        }
+
+        private void ProcessOperation(Calculator model, string operation)
+        {
+            if (operation == "=")
+            {
+                ProcessCalculation(model);
+            }
+            else
+            {
+                TempData["Temp"] = operation;
+                model.Display += operation;
+            }
+        }
+
+        private void ProcessCalculation(Calculator model)
+        {
+            string input = model.Display;
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                model.Display = "";
+                return;
+            }
+
+            double currentNumber = 0;
+            char currentOp = '+';
+            double result = 0;
+            bool hasOperator = false;
+
+            for (int i = 0; i < input.Length; i++)
+            {
+                char ch = input[i];
+
+                if (char.IsDigit(ch) || ch == '.')
+                {
+                    int start = i;
+                    while (i < input.Length && (char.IsDigit(input[i]) || input[i] == '.'))
+                    {
+                        i++;
+                    }
+                    i--; // Adjust for loop increment
+                    string numberStr = input.Substring(start, i - start + 1);
+                    currentNumber = double.Parse(numberStr);
                 }
+                else if (ch == '+' || ch == '-' || ch == '*' || ch == '/')
+                {
+                    if (hasOperator)
+                    {
+                        GetResult(currentOp, model, currentNumber);
+                    }
+                    else
+                    {
+                        result = currentNumber;
+                        hasOperator = true;
+                    }
+                    currentOp = ch;
+                    currentNumber = 0;
+                }
+                else if (ch == '=')
+                {
+                    if (hasOperator)
+                    {
+                        GetResult(currentOp, model, currentNumber);
+                        model.Display = $"{result}={model.Result}";
+                        model.Result = result;
+                    }
+                    return;
+                }
+            }
+
+            if (hasOperator)
+            {
+                GetResult(currentOp, model, currentNumber);
+                model.Display = $"{result}={model.Result}";
+                model.Result = result;
+            }
+        }
+    }
+}
+
